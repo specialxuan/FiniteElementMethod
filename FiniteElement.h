@@ -23,6 +23,7 @@ public:
         double xcn; // X coordinate of nodes
         double ycn; // Y coordinate of nodes
         double zcn; // Z coordinate of nodes
+        bool fixed; // fixed or not
     } * Nodes;      // parameters of nodes
 
     struct ConstantStrainTriangle // constant strain triangle unit
@@ -133,7 +134,7 @@ public:
             a3 = x1 * y2 - x2 * y1;
             b1 = y2 - y3;
             b2 = y3 - y1;
-            b3 - y1 - y2;
+            b3 = y1 - y2;
             c1 = x3 - x2;
             c2 = x1 - x3;
             c3 = x2 - x1;
@@ -276,6 +277,11 @@ public:
                 }
             }
         }
+
+        for (int i = 0; i < TNN; i++)
+            if (Nodes[i].fixed)
+                TotalStiffness(i * 2, i * 2) = TotalStiffness(i * 2 + 1, i * 2 + 1) = 1000000;
+
         return 0;
     }
 
@@ -603,6 +609,11 @@ bool FiniteElement::feInput()
     Nodes[2].ycn = 1;
     Nodes[3].xcn = 0;
     Nodes[3].ycn = 1;
+
+    Nodes[0].fixed = 1;
+    Nodes[1].fixed = 0;
+    Nodes[2].fixed = 0;
+    Nodes[3].fixed = 1;
 
     CSTriangles[0].nodes[0] = 1;
     CSTriangles[0].nodes[1] = 2;

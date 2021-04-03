@@ -10,11 +10,17 @@ int main()
     fe.feAllocate();
     fe.feBuildTotalStiff();
     fe.feBuildLoadVector();
+    fe.sfConjugateGradientPar(fe.TotalStiffness, fe.LoadVector, fe.Displacement, fe.DOF);
 
     for (int i = 0; i < fe.DOF; i++)
     {
-        cout << fe.LoadVector[i] << "\n";
+        cout << fe.Displacement[i] << "\n";
     }
+
+    // for (int i = 0; i < fe.DOF; i++)
+    // {
+    //     cout << fe.LoadVector[i] << "\n";
+    // }
     
 
     // for (int i = 0; i < fe.DOF; i++)
