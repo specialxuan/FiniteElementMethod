@@ -2,7 +2,7 @@
 
 int main()
 {
-    double *us = new double[4]();
+    // double *us = new double[4]();
     FiniteElement fe;
     fe.feInput();
     fe.feCalculate();

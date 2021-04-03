@@ -676,4 +676,6 @@ bool FiniteElement::feCalculate()
 
     if (cstStrainStress())
         return fePrintError(0);
+
+    return 0;
 }
