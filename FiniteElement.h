@@ -286,6 +286,8 @@ public:
             }
         }
 
+        MaxTS = TotalStiffness.normalize();
+
         for (int i = 0; i < TNN; i++)
             if (Nodes[i].fixed)
                 TotalStiffness(i * 2, i * 2) = TotalStiffness(i * 2 + 1, i * 2 + 1) = 1000000;
@@ -313,6 +315,13 @@ public:
                     LoadVector[p[j] + m] += llv[j * 2 + m];
         }
 
+        for (int i = 0; i < DOF; i++)
+            if (LoadVector[i] > MaxLV)
+                MaxLV = LoadVector[i];
+        
+        for (int i = 0; i < DOF; i++)
+            LoadVector[i] = LoadVector[i] / MaxLV;
+        
         return 0;
     }
 
@@ -460,8 +469,8 @@ public:
         //     A[i] = A[i] * MaxTS;
         // for (int i = 0; i < N; i++)
         //     b[i] = b[i] * MaxLV;
-        // for (int i = 0; i < N; i++)
-        //     x[i] = x[i] * MaxLV / MaxTS;
+        for (int i = 0; i < N; i++)
+            x[i] = x[i] * MaxLV / MaxTS;
 
         if (ProgressBar)
             cout << "\rSolving equation done [ 100%% ][=================================================]\n";

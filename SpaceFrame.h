@@ -153,7 +153,7 @@ private:
             }
         }
 
-        MaxTS = TotalStiffness.maximum();
+        MaxTS = TotalStiffness.normalize();
 
         return 0;
     }

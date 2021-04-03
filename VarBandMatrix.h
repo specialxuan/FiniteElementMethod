@@ -10,6 +10,8 @@ private:
     int DIM;
     int lastelement; // upper limit
     double zero = 0;
+    double Max;
+    bool normalized = 0;
 
 public:
     VarBandMatrix();
@@ -18,7 +20,8 @@ public:
 
     void initialize(int *, int);
     void initialize(VarBandMatrix &);
-    double maximum();
+    double normalize();
+    double denormalize();
     // VarBandMatrix &operator/(); TODO
     double &operator()(int, int);
 
@@ -85,12 +88,31 @@ void VarBandMatrix::initialize(VarBandMatrix &vbm)
     }
 }
 
-double VarBandMatrix::maximum()
+double VarBandMatrix::normalize()
 {
-    double Max = 0;
+    if (normalized == 1)
+        return Max;
+
     for (int i = 0; i < lastelement; i++)
         if (fabs(matrix[i]) > Max)
             Max = matrix[i];
+    
+    for (int i = 0; i < lastelement; i++)
+        matrix[i] = matrix[i] / Max;
+
+    normalized = 1;
+
+    return Max;
+}
+
+double VarBandMatrix::denormalize()
+{
+    if (normalized == 0)
+        return Max;
+
+    for (int i = 0; i < lastelement; i++)
+        matrix[i] = matrix[i] * Max;
+
     return Max;
 }
 
