@@ -217,11 +217,11 @@ public:
     {
         int p[3] = {0}; // p is a temperary vector for i0j0
 
-        for (int k = 0; k < NCST; k++)
+        for (int i = 0; i < NCST; i++)
         {
-            p[0] = 2 * (CSTriangles[k].nodes[0] - 1); // match the displacement with nods
-            p[1] = 2 * (CSTriangles[k].nodes[1] - 1);
-            p[2] = 2 * (CSTriangles[k].nodes[2] - 1);
+            p[0] = 2 * (CSTriangles[i].nodes[0] - 1); // match the displacement with nods
+            p[1] = 2 * (CSTriangles[i].nodes[1] - 1);
+            p[2] = 2 * (CSTriangles[i].nodes[2] - 1);
 
             double u1 = Displacement[p[0] + 0]; // displacements
             double v1 = Displacement[p[0] + 1];
@@ -230,23 +230,27 @@ public:
             double u3 = Displacement[p[2] + 0];
             double v3 = Displacement[p[2] + 1];
 
-            double b1 = CSTriangles[k].b[0]; // paramaters of shape function
-            double b2 = CSTriangles[k].b[1];
-            double b3 = CSTriangles[k].b[2];
-            double c1 = CSTriangles[k].c[0];
-            double c2 = CSTriangles[k].c[1];
-            double c3 = CSTriangles[k].c[2];
+            double b1 = CSTriangles[i].b[0]; // paramaters of shape function
+            double b2 = CSTriangles[i].b[1];
+            double b3 = CSTriangles[i].b[2];
+            double c1 = CSTriangles[i].c[0];
+            double c2 = CSTriangles[i].c[1];
+            double c3 = CSTriangles[i].c[2];
 
-            double area2 = 2 * CSTriangles[k].area;
+            double area2 = 2 * CSTriangles[i].area;
+            double E = CSTriangles[i].elastic;
+            double mu = CSTriangles[i].mu;
+            double tmp = E / (1 - mu * mu);
 
-            CSTriangles[k].strain[0] = u1 * b1 + u2 * b2 + u3 * b3 / area2; // strain
-            CSTriangles[k].strain[1] = v1 * c1 + v2 * c2 + v3 * c3 / area2;
-            CSTriangles[k].strain[2] = u1 * c1 + u2 * c2 + u3 * c3 + v1 * b1 + v2 * b2 + v3 * b3 / area2;
-            
+            CSTriangles[i].strain[0] = u1 * b1 + u2 * b2 + u3 * b3 / area2; // strain
+            CSTriangles[i].strain[1] = v1 * c1 + v2 * c2 + v3 * c3 / area2;
+            CSTriangles[i].strain[2] = u1 * c1 + u2 * c2 + u3 * c3 + v1 * b1 + v2 * b2 + v3 * b3 / area2;
+
+            double *strain = CSTriangles[i].strain;
             // FIXME
-            CSTriangles[k].stress[0] = CSTriangles[k].elastic * CSTriangles[k].strain[0]; //stress
-            CSTriangles[k].stress[1] = CSTriangles[k].elastic * CSTriangles[k].strain[1];
-            CSTriangles[k].stress[2] = CSTriangles[k].elastic * CSTriangles[k].strain[2];
+            CSTriangles[i].stress[0] = tmp * (strain[0] + mu * strain[1]); //stress
+            CSTriangles[i].stress[1] = tmp * (mu * strain[0] + strain[1]);
+            CSTriangles[i].stress[2] = tmp * (1 - mu) / 2 * strain[2];
         }
 
         return 0;
