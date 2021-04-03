@@ -78,10 +78,10 @@ public:
                 perband[n2] = bandwidth2;
         }
 
-        for (int i = 0; i < TNN; i++)
-        {
-            cout << perband[i] << "\n";
-        }
+        // for (int i = 0; i < TNN; i++)
+        // {
+        //     cout << perband[i] << "\n";
+        // }
         
         
         for (int i = 0; i < TNN; i++)
@@ -96,10 +96,10 @@ public:
         TotalStiffness.initialize(IV, DOF); // allocate memory for total stiffness matrix
         LoadVector = new double[DOF]();     // allocate memory for load vector
         Displacement = new double[DOF]();   // allocate memory for displacement vector
-        for (int i = 0; i < DOF; i++)
-        {
-            cout << IV[i] << "\n";
-        }
+        // for (int i = 0; i < DOF; i++)
+        // {
+        //     cout << IV[i] << "\n";
+        // }
         
         delete[] perband;
         delete[] IV;
@@ -173,14 +173,15 @@ public:
     bool cstBuildUnitLoad(int i, double *llv) // k is load number, llv is local load vector
     {
         Load load = Loads[i]; // paramaters of load
+        int num = load.num - 1;
         int n1 = load.node[0] - 1;
         int n2 = load.node[1] - 1;
-        double A = CSTriangles[load.num].area;
-        double t = CSTriangles[load.num].thickness;
-        double x1 = Nodes[CSTriangles[load.num].nodes[n1]].xcn;
-        double x2 = Nodes[CSTriangles[load.num].nodes[n2]].xcn;
-        double y1 = Nodes[CSTriangles[load.num].nodes[n1]].ycn;
-        double y2 = Nodes[CSTriangles[load.num].nodes[n2]].ycn;
+        double A = CSTriangles[num].area;
+        double t = CSTriangles[num].thickness;
+        double x1 = Nodes[CSTriangles[num].nodes[n1]].xcn;
+        double x2 = Nodes[CSTriangles[num].nodes[n2]].xcn;
+        double y1 = Nodes[CSTriangles[num].nodes[n1]].ycn;
+        double y2 = Nodes[CSTriangles[num].nodes[n2]].ycn;
         double l = sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
 
         switch (load.kol)
@@ -270,7 +271,7 @@ public:
                     if (cstBuildUnitStiff(k, i, j, us)) // build unit stiffness matrix
                         return sfPrintError(7);
                     for (int m = 0; m < dofNode; m++)
-                        for (int n = 0; n <= dofNode; n++)
+                        for (int n = 0; n < dofNode; n++)
                             TotalStiffness(p[i] + m, p[j] + n) += us[m * dofNode + n]; // superpose
                 }
             }
@@ -279,7 +280,7 @@ public:
     }
 
     // build load vector
-    bool sfBuildLoadVector()
+    bool feBuildLoadVector()
     {
         for (int i = 0; i < NOL; i++) // for every loads
         {
@@ -289,13 +290,13 @@ public:
             if (cstBuildUnitLoad(i, llv)) // build unit stiffness matrix
                 return sfPrintError(7);
 
-            p[0] = dofNode * (CSTriangles[Loads[i].num].nodes[0] - 1); // match the displacement with nods
-            p[1] = dofNode * (CSTriangles[Loads[i].num].nodes[1] - 1);
-            p[2] = dofNode * (CSTriangles[Loads[i].num].nodes[2] - 1);
+            p[0] = dofNode * (CSTriangles[Loads[i].num - 1].nodes[0] - 1); // match the displacement with nods
+            p[1] = dofNode * (CSTriangles[Loads[i].num - 1].nodes[1] - 1);
+            p[2] = dofNode * (CSTriangles[Loads[i].num - 1].nodes[2] - 1);
 
             for (int j = 0; j < 2; j++) // add local load vector to load vector
                 for (int m = 0; m < dofNode; m++)
-                    LoadVector[p[j] + m] += llv[m];
+                    LoadVector[p[j] + m] += llv[j * 2 + m];
         }
 
         return 0;
@@ -613,7 +614,17 @@ bool FiniteElement::feInput()
     CSTriangles[1].nodes[0] = 2;
     CSTriangles[1].nodes[1] = 3;
     CSTriangles[1].nodes[2] = 4;
-    CSTriangles[1].elastic = 0;
+    CSTriangles[1].elastic = 1;
     CSTriangles[1].mu = 1.0 / 3;
     CSTriangles[1].thickness = 1;
+
+    Loads[0].kol = 0;
+    Loads[0].node[0] = 2;
+    Loads[0].node[1] = 1;
+    Loads[0].num = 1;
+    // Loads[0].unit = 1;
+    Loads[0].vol[0] = 0;
+    Loads[0].vol[1] = 1;
+
+    return 0;
 }

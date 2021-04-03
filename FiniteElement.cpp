@@ -9,17 +9,22 @@ int main()
     // fe.cstBuildUnitStiff(1, 0, 0, us);
     fe.feAllocate();
     fe.feBuildTotalStiff();
+    fe.feBuildLoadVector();
 
     for (int i = 0; i < fe.DOF; i++)
     {
-        for (int j = 0; j < fe.DOF; j++)
-        {
-            cout << setw(10) << fe.TotalStiffness(i, j) << "|";
-        }
-        cout << "\n";
+        cout << fe.LoadVector[i] << "\n";
     }
     
 
+    // for (int i = 0; i < fe.DOF; i++)
+    // {
+    //     for (int j = 0; j < fe.DOF; j++)
+    //     {
+    //         cout << setw(15) << fe.TotalStiffness(i, j) << "|";
+    //     }
+    //     cout << "\n";
+    // }
 
     // for (int i = 0; i < 4; i++)
     // {
