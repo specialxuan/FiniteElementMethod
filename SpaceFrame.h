@@ -89,9 +89,8 @@ private:
     // allocate total stiffness matrix, load vector and displacement vector
     bool sfAllocate()
     {
-        int *IV;                                       // the location of diagonal element
+        int *IV = new int[DOF]();                      // the location of diagonal element
         int it = 0, mm = 0, *peribdw = new int[TNN](); // bandwidth per line in total stiffness matrix
-        IV = new int[DOF]();
 
         for (int i = 0; i < NOR; i++) // for each rod
         {
@@ -113,11 +112,12 @@ private:
                     IV[it - 1] = IV[it - 2] + 6 * peribdw[i] + j;
             }
         }
-        delete[] peribdw;
 
         TotalStiffness.initialize(IV, DOF); // allocate memory for total stiffness matrix
         LoadVector = new double[DOF]();     // allocate memory for load vector
         Displacement = new double[DOF]();   // allocate memory for displacement vector
+        delete[] peribdw;
+        delete[] IV;
 
         return 0;
     }

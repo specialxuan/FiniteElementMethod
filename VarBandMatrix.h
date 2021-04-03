@@ -6,9 +6,9 @@ class VarBandMatrix
 {
 private:
     double *matrix;
-    int *IV; // the location of diagonal element
+    int *diagelement; // the location of diagonal element
     int DIM;
-    int NSI; // upper limit
+    int lastelement; // upper limit
     double zero = 0;
 
 public:
@@ -21,37 +21,39 @@ public:
     double maximum();
     // VarBandMatrix &operator/(); TODO
     double &operator()(int, int);
+
+    friend class FiniteElement;
 };
 
 VarBandMatrix::VarBandMatrix()
 {
     matrix = NULL;
-    IV = NULL;
+    diagelement = NULL;
     DIM = 0;
-    NSI = 0;
+    lastelement = 0;
 }
 
 VarBandMatrix::VarBandMatrix(VarBandMatrix &vbm)
 {
-    NSI = vbm.NSI;
+    lastelement = vbm.lastelement;
     DIM = vbm.DIM;
 
     if (vbm.matrix != NULL)
     {
-        matrix = new double[NSI]();
-        memcpy(matrix, vbm.matrix, vbm.NSI * sizeof(double));
+        matrix = new double[lastelement]();
+        memcpy(matrix, vbm.matrix, vbm.lastelement * sizeof(double));
     }
-    if (vbm.IV != NULL)
+    if (vbm.diagelement != NULL)
     {
-        IV = new int[DIM]();
-        memcpy(IV, vbm.IV, vbm.DIM * sizeof(int));
+        diagelement = new int[DIM]();
+        memcpy(diagelement, vbm.diagelement, vbm.DIM * sizeof(int));
     }
 }
 
 VarBandMatrix::~VarBandMatrix()
 {
     delete[] matrix;
-    delete[] IV;
+    delete[] diagelement;
 }
 
 void VarBandMatrix::initialize(int *iv, int dim)
@@ -59,34 +61,34 @@ void VarBandMatrix::initialize(int *iv, int dim)
     DIM = dim;
     if (iv != NULL)
     {
-        IV = new int[DIM]();
-        memcpy(IV, iv, DIM * sizeof(int));
+        diagelement = new int[DIM]();
+        memcpy(diagelement, iv, DIM * sizeof(int));
     }
-    NSI = IV[DIM - 1];
-    matrix = new double[NSI]();
+    lastelement = diagelement[DIM - 1];
+    matrix = new double[lastelement]();
 }
 
 void VarBandMatrix::initialize(VarBandMatrix &vbm)
 {
-    NSI = vbm.NSI;
+    lastelement = vbm.lastelement;
     DIM = vbm.DIM;
 
     if (vbm.matrix != NULL)
     {
-        matrix = new double[NSI]();
-        memcpy(matrix, vbm.matrix, vbm.NSI * sizeof(double));
+        matrix = new double[lastelement]();
+        memcpy(matrix, vbm.matrix, vbm.lastelement * sizeof(double));
     }
-    if (vbm.IV != NULL)
+    if (vbm.diagelement != NULL)
     {
-        IV = new int[DIM]();
-        memcpy(IV, vbm.IV, vbm.DIM * sizeof(int));
+        diagelement = new int[DIM]();
+        memcpy(diagelement, vbm.diagelement, vbm.DIM * sizeof(int));
     }
 }
 
 double VarBandMatrix::maximum()
 {
     double Max = 0;
-    for (int i = 0; i < NSI; i++)
+    for (int i = 0; i < lastelement; i++)
         if (fabs(matrix[i]) > Max)
             Max = matrix[i];
     return Max;
@@ -102,19 +104,19 @@ double &VarBandMatrix::operator()(int i, int j)
 
     if (i == j)
     {
-        return matrix[IV[i] - 1];
+        return matrix[diagelement[i] - 1];
     }
     else if (j > i)
     {
-        if ((IV[j] - j + i) > IV[j - 1])
-            return matrix[IV[j] - j + i - 1];
+        if ((diagelement[j] - j + i) > diagelement[j - 1])
+            return matrix[diagelement[j] - j + i - 1];
         else
             return zero;
     }
     else if (i > j)
     {
-        if ((IV[i] - i + j) > IV[i - 1])
-            return matrix[IV[i] - i + j - 1];
+        if ((diagelement[i] - i + j) > diagelement[i - 1])
+            return matrix[diagelement[i] - i + j - 1];
         else
             return zero;
     }
