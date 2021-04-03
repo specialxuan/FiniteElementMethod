@@ -5,13 +5,14 @@ int main()
     double *us = new double[4]();
     FiniteElement fe;
     fe.feInput();
-    fe.cstInitialize();
-    // fe.cstBuildUnitStiff(1, 0, 0, us);
-    fe.feAllocate();
-    fe.feBuildTotalStiff();
-    fe.feBuildLoadVector();
-    fe.sfConjugateGradientPar(fe.TotalStiffness, fe.LoadVector, fe.Displacement, fe.DOF);
-    fe.cstStrainStress();
+    fe.feCalculate();
+    // fe.cstInitialize();
+    // // fe.cstBuildUnitStiff(1, 0, 0, us);
+    // fe.feAllocate();
+    // fe.feBuildTotalStiff();
+    // fe.feBuildLoadVector();
+    // fe.feConjugateGradientPar(fe.TotalStiffness, fe.LoadVector, fe.Displacement, fe.DOF);
+    // fe.cstStrainStress();
 
     for (int i = 0; i < 2; i++)
         for (int j = 0; j < 3; j++)

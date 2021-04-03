@@ -149,7 +149,7 @@ public:
     bool cstBuildUnitStiff(int k, int r, int s, double *us) // k is unit number, r and s is section number, us is a section in unit stiffness matrix
     {
         if (k < 0 || r < 0 || r > 2 || s < 0 || s > 2 || us == NULL)
-            return sfPrintError(16);
+            return fePrintError(16);
 
         // double *a = CSTriangles[k].a; // paramaters of shape function
         double *b = CSTriangles[k].b;
@@ -242,12 +242,16 @@ public:
             double mu = CSTriangles[i].mu;
             double tmp = E / (1 - mu * mu);
 
-            CSTriangles[i].strain[0] = u1 * b1 + u2 * b2 + u3 * b3 / area2; // strain
-            CSTriangles[i].strain[1] = v1 * c1 + v2 * c2 + v3 * c3 / area2;
-            CSTriangles[i].strain[2] = u1 * c1 + u2 * c2 + u3 * c3 + v1 * b1 + v2 * b2 + v3 * b3 / area2;
+            // CSTriangles[i].strain[0] = u1 * b1 + u2 * b2 + u3 * b3 / area2; // strain
+            // CSTriangles[i].strain[1] = v1 * c1 + v2 * c2 + v3 * c3 / area2;
+            // CSTriangles[i].strain[2] = u1 * c1 + u2 * c2 + u3 * c3 + v1 * b1 + v2 * b2 + v3 * b3 / area2;
 
             double *strain = CSTriangles[i].strain;
-            // FIXME
+
+            strain[0] = u1 * b1 + u2 * b2 + u3 * b3 / area2; // strain
+            strain[1] = v1 * c1 + v2 * c2 + v3 * c3 / area2;
+            strain[2] = u1 * c1 + u2 * c2 + u3 * c3 + v1 * b1 + v2 * b2 + v3 * b3 / area2;
+
             CSTriangles[i].stress[0] = tmp * (strain[0] + mu * strain[1]); //stress
             CSTriangles[i].stress[1] = tmp * (mu * strain[0] + strain[1]);
             CSTriangles[i].stress[2] = tmp * (1 - mu) / 2 * strain[2];
@@ -274,7 +278,7 @@ public:
                 for (int j = i; j < numNode; j++) // for every nodes of the unit
                 {
                     if (cstBuildUnitStiff(k, i, j, us)) // build unit stiffness matrix
-                        return sfPrintError(7);
+                        return fePrintError(7);
                     for (int m = 0; m < dofNode; m++)
                         for (int n = 0; n < dofNode; n++)
                             TotalStiffness(p[i] + m, p[j] + n) += us[m * dofNode + n]; // superpose
@@ -298,7 +302,7 @@ public:
             double llv[6] = {0}; // local load vector
 
             if (cstBuildUnitLoad(i, llv)) // build unit stiffness matrix
-                return sfPrintError(7);
+                return fePrintError(7);
 
             p[0] = dofNode * (CSTriangles[Loads[i].num - 1].nodes[0] - 1); // match the displacement with nods
             p[1] = dofNode * (CSTriangles[Loads[i].num - 1].nodes[1] - 1);
@@ -313,10 +317,10 @@ public:
     }
 
     // solve equation of matrix by conjugate gradient parallel
-    bool sfConjugateGradientPar(VarBandMatrix &A, double *b, double *x, int N)
+    bool feConjugateGradientPar(VarBandMatrix &A, double *b, double *x, int N)
     {
         if (b == NULL || x == NULL || N == 0)
-            return sfPrintError(12);
+            return fePrintError(12);
 
         double *r = NULL, *p = NULL, *z = NULL;
         double gamma = 0, gamma_new = 0, gamma_new_sqrt = 0, alpha = 0, beta = 0;
@@ -470,7 +474,7 @@ public:
     }
 
     // print error
-    bool sfPrintError(int error)
+    bool fePrintError(int error)
     {
         cout << "ERROR:\t";
         switch (error)
@@ -642,4 +646,25 @@ bool FiniteElement::feInput()
     Loads[0].vol[1] = 1;
 
     return 0;
+}
+
+bool FiniteElement::feCalculate()
+{
+    if (cstInitialize())
+        return fePrintError(0);
+
+    if (feAllocate())
+        return fePrintError(0);
+
+    if (feBuildTotalStiff())
+        return fePrintError(0);
+
+    if (feBuildLoadVector())
+        return fePrintError(0);
+
+    if (feConjugateGradientPar(TotalStiffness, LoadVector, Displacement, DOF))
+        return fePrintError(0);
+
+    if (cstStrainStress())
+        return fePrintError(0);
 }
