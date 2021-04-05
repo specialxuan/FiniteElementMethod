@@ -90,6 +90,7 @@ public:
                 else
                     IV[it - 1] = IV[it - 2] + 2 * perband[i] + j;
             }
+
         TotalStiffness.initialize(IV, DOF); // allocate memory for total stiffness matrix
         LoadVector = new double[DOF]();     // allocate memory for load vector
         Displacement = new double[DOF]();   // allocate memory for displacement vector
@@ -341,7 +342,6 @@ public:
         z = (double *)malloc(N * sizeof(double));
         memset(z, 0, sizeof(double));
 
-        // TODO: Max
         // for (int i = 0; i < NSI; i++)
         //     A[i] = A[i] / MaxTS;
         // for (int i = 0; i < N; i++)
@@ -460,7 +460,6 @@ public:
             gamma = gamma_new;
         }
 
-        // TODO: Max
         // for (int i = 0; i < NSI; i++)
         //     A[i] = A[i] * MaxTS;
         // for (int i = 0; i < N; i++)
@@ -583,7 +582,7 @@ public:
     ~FiniteElement();
 
     bool feInput(const char *);
-    bool feOutput();
+    bool feOutput(const char *);
     bool feCalculate();
 };
 
@@ -817,6 +816,28 @@ bool FiniteElement::feInput(const char *inputFile = "source&result/fe.csv")
     // return 0;
 }
 
+bool FiniteElement::feOutput(const char *outputFile = "source&result/feResult.csv")
+{
+    if (status != 2)
+    {
+        cout << "ERROR:\tCalculation is not completed!\n";
+        return 0;
+    }
+        
+
+    ofstream fout(outputFile, ios::out);
+    fout << setw(66) << "Calculation Of Finite Element Method,\n";
+    fout << "Unit   , Strain_X        , Strain_Y        , Stress_X        , Stress_Y        ,\n";
+    for (int i = 0; i < NCST; i++)
+        fout << setw(6) << i + 1 << " , " \
+        << setw(15) << CSTriangles[i].strain[0] << " , " \
+        << setw(15) << CSTriangles[i].strain[1] << " , " \
+        << setw(15) << CSTriangles[i].stress[0] << " , " \
+        << setw(15) << CSTriangles[i].stress[0] << " ,\n";
+
+    return 0;
+}
+
 bool FiniteElement::feCalculate()
 {
     if (cstInitialize())
@@ -848,6 +869,8 @@ bool FiniteElement::feCalculate()
         return fePrintError(6);
     else
         cout << "Calculating strain and stress succeed!\n";
+    
+    status = 2;
 
     return 0;
 }

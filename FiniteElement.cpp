@@ -6,6 +6,7 @@ int main()
     FiniteElement fe;
     fe.feInput();
     fe.feCalculate();
+    fe.feOutput();
     // fe.cstInitialize();
     // // fe.cstBuildUnitStiff(1, 0, 0, us);
     // fe.feAllocate();
