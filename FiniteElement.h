@@ -9,9 +9,9 @@ using namespace std;
 class FiniteElement
 {
 public:
-    double EPS;   // epsilon, calculation accuracy
-    double MaxTS; // maximum value in total stiffness matrix
-    double MaxLV; // maximum value in load vector
+    double EPS = 1e-15; // epsilon, calculation accuracy
+    double MaxTS;       // maximum value in total stiffness matrix
+    double MaxLV;       // maximum value in load vector
 
     int TNN;  // total number of nodes
     int DOF;  // degree of freedom
@@ -22,7 +22,6 @@ public:
     {
         double xcn; // X coordinate of nodes
         double ycn; // Y coordinate of nodes
-        double zcn; // Z coordinate of nodes
         bool fixed; // fixed or not
     } * Nodes;      // parameters of nodes
 
@@ -33,22 +32,20 @@ public:
         double b[3];      // paramaters of shape function
         double c[3];      // paramaters of shape function
         double area;      // paramaters of shape function
-        double mu;        // poisson ratio
         double elastic;   // elastic module
-        double thickness; // thickness of the unit
+        double mu;        // poisson ratio
+        double thick;     // thickness of the unit
+        double rou;       // density of the unit
         double strain[3]; // strain of the unit
         double stress[3]; // stress of the unit
-        double rou;       // density of the unit
     } * CSTriangles;      // constant strain triangle unit
 
     struct Load // parameters of loads
     {
-        int unit;      // the kind of unit with load
-        int num;       // the number of unit with load
-        int node[3];   // the node with load
-        int pli;       // the plane of the load's in
+        int unit;      // the number of unit with load
+        int node[2];   // the node with load
         int kol;       // the kind of load
-        double vol[3]; // the value of load
+        double vol[2]; // the value of load
     } * Loads;         // parameters of loads
 
     VarBandMatrix TotalStiffness; // total stiffness matrix
@@ -62,7 +59,7 @@ public:
     // allocate total stiffness matrix, load vector and displacement vector
     bool feAllocate()
     {
-        int *IV = new int[DOF]();                     // the location of diagonal element
+        int *IV = new int[DOF](); // the location of diagonal element
         int it = 0;
         int bandwidth1 = 0, bandwidth2 = 0, *perband = new int[TNN](); // bandwidth per line in total stiffness matrix
 
@@ -83,8 +80,7 @@ public:
         // {
         //     cout << perband[i] << "\n";
         // }
-        
-        
+
         for (int i = 0; i < TNN; i++)
             for (int j = 1; j <= 2; j++)
             {
@@ -101,7 +97,7 @@ public:
         // {
         //     cout << IV[i] << "\n";
         // }
-        
+
         delete[] perband;
         delete[] IV;
 
@@ -149,7 +145,7 @@ public:
     bool cstBuildUnitStiff(int k, int r, int s, double *us) // k is unit number, r and s is section number, us is a section in unit stiffness matrix
     {
         if (k < 0 || r < 0 || r > 2 || s < 0 || s > 2 || us == NULL)
-            return fePrintError(16);
+            return fePrintError(7);
 
         // double *a = CSTriangles[k].a; // paramaters of shape function
         double *b = CSTriangles[k].b;
@@ -158,7 +154,7 @@ public:
         double Area = CSTriangles[k].area; // paramaters of the unit
         double Mu = CSTriangles[k].mu;
         double E = CSTriangles[k].elastic;
-        double T = CSTriangles[k].thickness;
+        double T = CSTriangles[k].thick;
 
         double tmp = E * T / (4 * Area * (1 - Mu * Mu)); // temperatary coefficient
         // cout << tmp << "   tmp   \n";
@@ -174,11 +170,11 @@ public:
     bool cstBuildUnitLoad(int i, double *llv) // k is load number, llv is local load vector
     {
         Load load = Loads[i]; // paramaters of load
-        int num = load.num - 1;
+        int num = load.unit - 1;
         int n1 = load.node[0] - 1;
         int n2 = load.node[1] - 1;
         double A = CSTriangles[num].area;
-        double t = CSTriangles[num].thickness;
+        double t = CSTriangles[num].thick;
         double x1 = Nodes[CSTriangles[num].nodes[n1]].xcn;
         double x2 = Nodes[CSTriangles[num].nodes[n2]].xcn;
         double y1 = Nodes[CSTriangles[num].nodes[n1]].ycn;
@@ -278,7 +274,7 @@ public:
                 for (int j = i; j < numNode; j++) // for every nodes of the unit
                 {
                     if (cstBuildUnitStiff(k, i, j, us)) // build unit stiffness matrix
-                        return fePrintError(7);
+                        return fePrintError(8);
                     for (int m = 0; m < dofNode; m++)
                         for (int n = 0; n < dofNode; n++)
                             TotalStiffness(p[i] + m, p[j] + n) += us[m * dofNode + n]; // superpose
@@ -304,11 +300,11 @@ public:
             double llv[6] = {0}; // local load vector
 
             if (cstBuildUnitLoad(i, llv)) // build unit stiffness matrix
-                return fePrintError(7);
+                return fePrintError(9);
 
-            p[0] = dofNode * (CSTriangles[Loads[i].num - 1].nodes[0] - 1); // match the displacement with nods
-            p[1] = dofNode * (CSTriangles[Loads[i].num - 1].nodes[1] - 1);
-            p[2] = dofNode * (CSTriangles[Loads[i].num - 1].nodes[2] - 1);
+            p[0] = dofNode * (CSTriangles[Loads[i].unit - 1].nodes[0] - 1); // match the displacement with nods
+            p[1] = dofNode * (CSTriangles[Loads[i].unit - 1].nodes[1] - 1);
+            p[2] = dofNode * (CSTriangles[Loads[i].unit - 1].nodes[2] - 1);
 
             for (int j = 0; j < 2; j++) // add local load vector to load vector
                 for (int m = 0; m < dofNode; m++)
@@ -318,10 +314,10 @@ public:
         for (int i = 0; i < DOF; i++)
             if (LoadVector[i] > MaxLV)
                 MaxLV = LoadVector[i];
-        
+
         for (int i = 0; i < DOF; i++)
             LoadVector[i] = LoadVector[i] / MaxLV;
-        
+
         return 0;
     }
 
@@ -329,7 +325,7 @@ public:
     bool feConjugateGradientPar(VarBandMatrix &A, double *b, double *x, int N)
     {
         if (b == NULL || x == NULL || N == 0)
-            return fePrintError(12);
+            return fePrintError(10);
 
         double *r = NULL, *p = NULL, *z = NULL;
         double gamma = 0, gamma_new = 0, gamma_new_sqrt = 0, alpha = 0, beta = 0;
@@ -489,37 +485,37 @@ public:
         switch (error)
         {
         case 1:
-            cout << "\n";
+            cout << "Initializing const strain triangle unit failed!\n";
             break;
         case 2:
-            cout << "\n";
+            cout << "Allocating memeories failed!\n";
             break;
         case 3:
-            cout << "\n";
+            cout << "Building total stiffness matrix failed!\n";
             break;
         case 4:
-            cout << "\n";
+            cout << "Building load vector failed!\n";
             break;
         case 5:
-            cout << "\n";
+            cout << "Solving equation failed!\n";
             break;
         case 6:
-            cout << "\n";
+            cout << "Calculating strain and stress failed!\n";
             break;
         case 7:
-            cout << "\n";
+            cout << "There is something wrong in building unit stiffness matrix!\n";
             break;
         case 8:
-            cout << "\n";
+            cout << "There is something wrong in building total stiffness matrix!\n";
             break;
         case 9:
-            cout << "\n";
+            cout << "There is something wrong in building load vector!\n";
             break;
         case 10:
-            cout << "\n";
+            cout << "There is something wrong in the equation!\n";
             break;
         case 11:
-            cout << "\n";
+            cout << "There is no such file!\n";
             break;
         case 12:
             cout << "\n";
@@ -572,10 +568,21 @@ public:
         return 1;
     }
 
+    bool fePrintError(int row, int column)
+    {
+        if (column == 1)
+            cout << "ERROR:\tRow: " << row << " Column: 1 : head is mismathced!\n";
+        else
+            cout << "ERROR:\tRow: " << row << " Column: " << column << " : data input failed!\n";
+        status = 3; // error
+
+        return 1;
+    }
+
     FiniteElement();
     ~FiniteElement();
 
-    bool feInput();
+    bool feInput(const char *);
     bool feOutput();
     bool feCalculate();
 };
@@ -605,77 +612,242 @@ FiniteElement::~FiniteElement()
     status = 0; // initialization is completed
 }
 
-bool FiniteElement::feInput()
+bool FiniteElement::feInput(const char *inputFile = "source&result/fe.csv")
 {
-    EPS = 1e-15;
+    if (status)
+        this->~FiniteElement();
+    const int one = 1;
+    struct Row
+    {
+        char head[10];
+        const int &cnt;
+    } rows[19] = {
+        {"TNN", one},
+        {"NCST", one},
+        {"NOL", one},
+        {"XCN", TNN},
+        {"YCN", TNN},
+        {"FIX", TNN},
+        {"NODE1", NCST},
+        {"NODE2", NCST},
+        {"NODE3", NCST},
+        {"ELASTIC", NCST},
+        {"MU", NCST},
+        {"THICK", NCST},
+        {"ROU", NCST},
+        {"UNIT", NOL},
+        {"NODE1", NOL},
+        {"NODE2", NOL},
+        {"KOL", NOL},
+        {"VOLX", NOL},
+        {"VOLY", NOL},
+    };
 
-    TNN = 4;
+    int rowIndex = 0;   // Reset the number of rows to zero
+    char buf[10] = {0}; // buffer and data string
+
+    ifstream fin(inputFile, ios::in);
+    if (!fin)
+        return fePrintError(11);
+
+    rowIndex = 1;
+    fin.ignore(1000000, '\n'); // skip first line
+
+    rowIndex = 2;
+    fin.getline(buf, 10, ',');
+    if (strcmp(rows[rowIndex - 2].head, buf))
+        return fePrintError(rowIndex, 1);
+    for (int i = 0; i < rows[rowIndex - 2].cnt; i++)
+        if (!(fin >> TNN))
+            return fePrintError(rowIndex, i + 1);
+    fin.ignore(1000000, '\n');
+
+    rowIndex = 3;
+    fin.getline(buf, 10, ',');
+    if (strcmp(rows[rowIndex - 2].head, buf))
+        return fePrintError(rowIndex, 1);
+    for (int i = 0; i < rows[rowIndex - 2].cnt; i++)
+        if (!(fin >> NCST))
+            return fePrintError(rowIndex, i + 1);
+    fin.ignore(1000000, '\n');
+
+    rowIndex = 4;
+    fin.getline(buf, 10, ',');
+    if (strcmp(rows[rowIndex - 2].head, buf))
+        return fePrintError(rowIndex, 1);
+    for (int i = 0; i < rows[rowIndex - 2].cnt; i++)
+        if (!(fin >> NOL))
+            return fePrintError(rowIndex, i + 1);
+    fin.ignore(1000000, '\n');
+
     DOF = 2 * TNN;
-    NCST = 2;
-    NOL = 1;
-
     Nodes = new Node[TNN]();
     CSTriangles = new ConstantStrainTriangle[NCST]();
     Loads = new Load[NOL]();
 
-    Nodes[0].xcn = 0;
-    Nodes[0].ycn = 0;
-    Nodes[1].xcn = 2;
-    Nodes[1].ycn = 0;
-    Nodes[2].xcn = 2;
-    Nodes[2].ycn = 1;
-    Nodes[3].xcn = 0;
-    Nodes[3].ycn = 1;
-
-    Nodes[0].fixed = 1;
-    Nodes[1].fixed = 0;
-    Nodes[2].fixed = 0;
-    Nodes[3].fixed = 1;
-
-    CSTriangles[0].nodes[0] = 1;
-    CSTriangles[0].nodes[1] = 2;
-    CSTriangles[0].nodes[2] = 4;
-    CSTriangles[0].elastic = 1;
-    CSTriangles[0].mu = 1.0 / 3;
-    CSTriangles[0].thickness = 1;
-
-    CSTriangles[1].nodes[0] = 2;
-    CSTriangles[1].nodes[1] = 3;
-    CSTriangles[1].nodes[2] = 4;
-    CSTriangles[1].elastic = 1;
-    CSTriangles[1].mu = 1.0 / 3;
-    CSTriangles[1].thickness = 1;
-
-    Loads[0].kol = 0;
-    Loads[0].node[0] = 2;
-    Loads[0].node[1] = 1;
-    Loads[0].num = 1;
-    // Loads[0].unit = 1;
-    Loads[0].vol[0] = 0;
-    Loads[0].vol[1] = 1;
+    for (rowIndex = 5; rowIndex <= 20; rowIndex++)
+    {
+        fin.getline(buf, 10, ',');
+        if (strcmp(rows[rowIndex - 2].head, buf))
+            return fePrintError(rowIndex, 1);
+        for (int i = 0; i < rows[rowIndex - 2].cnt; i++)
+        {
+            switch (rowIndex)
+            {
+            case 5:
+                if (!(fin >> Nodes[i].xcn))
+                    return fePrintError(rowIndex, i + 1);
+                break;
+            case 6:
+                if (!(fin >> Nodes[i].ycn))
+                    return fePrintError(rowIndex, i + 1);
+                break;
+            case 7:
+                if (!(fin >> Nodes[i].fixed))
+                    return fePrintError(rowIndex, i + 1);
+                break;
+            case 8:
+                if (!(fin >> CSTriangles[i].nodes[0]))
+                    return fePrintError(rowIndex, i + 1);
+                break;
+            case 9:
+                if (!(fin >> CSTriangles[i].nodes[1]))
+                    return fePrintError(rowIndex, i + 1);
+                break;
+            case 10:
+                if (!(fin >> CSTriangles[i].nodes[2]))
+                    return fePrintError(rowIndex, i + 1);
+                break;
+            case 11:
+                if (!(fin >> CSTriangles[i].elastic))
+                    return fePrintError(rowIndex, i + 1);
+                break;
+            case 12:
+                if (!(fin >> CSTriangles[i].mu))
+                    return fePrintError(rowIndex, i + 1);
+                break;
+            case 13:
+                if (!(fin >> CSTriangles[i].thick))
+                    return fePrintError(rowIndex, i + 1);
+                break;
+            case 14:
+                if (!(fin >> CSTriangles[i].rou))
+                    return fePrintError(rowIndex, i + 1);
+                break;
+            case 15:
+                if (!(fin >> Loads[i].unit))
+                    return fePrintError(rowIndex, i + 1);
+                break;
+            case 16:
+                if (!(fin >> Loads[i].node[0]))
+                    return fePrintError(rowIndex, i + 1);
+                break;
+            case 17:
+                if (!(fin >> Loads[i].node[1]))
+                    return fePrintError(rowIndex, i + 1);
+                break;
+            case 18:
+                if (!(fin >> Loads[i].kol))
+                    return fePrintError(rowIndex, i + 1);
+                break;
+            case 19:
+                if (!(fin >> Loads[i].vol[0]))
+                    return fePrintError(rowIndex, i + 1);
+                break;
+            case 20:
+                if (!(fin >> Loads[i].vol[1]))
+                    return fePrintError(rowIndex, i + 1);
+                break;
+            }
+            fin.get();
+        }
+        fin.ignore(1000000, '\n');
+    }
+    fin.close();
+    status = 1; // input procedure is completed
 
     return 0;
+
+    // EPS = 1e-15;
+
+    // TNN = 4;
+    // DOF = 2 * TNN;
+    // NCST = 2;
+    // NOL = 1;
+
+    // Nodes = new Node[TNN]();
+    // CSTriangles = new ConstantStrainTriangle[NCST]();
+    // Loads = new Load[NOL]();
+
+    // Nodes[0].xcn = 0;
+    // Nodes[0].ycn = 0;
+    // Nodes[1].xcn = 2;
+    // Nodes[1].ycn = 0;
+    // Nodes[2].xcn = 2;
+    // Nodes[2].ycn = 1;
+    // Nodes[3].xcn = 0;
+    // Nodes[3].ycn = 1;
+
+    // Nodes[0].fixed = 1;
+    // Nodes[1].fixed = 0;
+    // Nodes[2].fixed = 0;
+    // Nodes[3].fixed = 1;
+
+    // CSTriangles[0].nodes[0] = 1;
+    // CSTriangles[0].nodes[1] = 2;
+    // CSTriangles[0].nodes[2] = 4;
+    // CSTriangles[0].elastic = 1;
+    // CSTriangles[0].mu = 1.0 / 3;
+    // CSTriangles[0].thick = 1;
+
+    // CSTriangles[1].nodes[0] = 2;
+    // CSTriangles[1].nodes[1] = 3;
+    // CSTriangles[1].nodes[2] = 4;
+    // CSTriangles[1].elastic = 1;
+    // CSTriangles[1].mu = 1.0 / 3;
+    // CSTriangles[1].thick = 1;
+
+    // Loads[0].kol = 0;
+    // Loads[0].node[0] = 2;
+    // Loads[0].node[1] = 1;
+    // Loads[0].unit = 1;
+    // Loads[0].vol[0] = 0;
+    // Loads[0].vol[1] = 1;
+
+    // return 0;
 }
 
 bool FiniteElement::feCalculate()
 {
     if (cstInitialize())
-        return fePrintError(0);
+        return fePrintError(1);
+    else
+        cout << "Initializing const strain triangle unit succeed!\n";
 
     if (feAllocate())
-        return fePrintError(0);
+        return fePrintError(2);
+    else
+        cout << "Allocating memories succeed!\n";
 
     if (feBuildTotalStiff())
-        return fePrintError(0);
+        return fePrintError(3);
+    else
+        cout << "Building total stiffness matrix succeed!\n";
 
     if (feBuildLoadVector())
-        return fePrintError(0);
+        return fePrintError(4);
+    else
+        cout << "Building load vector succeed!\n";
 
     if (feConjugateGradientPar(TotalStiffness, LoadVector, Displacement, DOF))
-        return fePrintError(0);
+        return fePrintError(5);
+    else
+        cout << "Solving equation succeed!\n";
 
     if (cstStrainStress())
-        return fePrintError(0);
+        return fePrintError(6);
+    else
+        cout << "Calculating strain and stress succeed!\n";
 
     return 0;
 }
