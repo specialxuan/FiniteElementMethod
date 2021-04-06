@@ -10,8 +10,8 @@ class FiniteElement
 {
 public:
     double EPS = 1e-15; // epsilon, calculation accuracy
-    double MaxTS;      // maximum value in total stiffness matrix
-    double MaxLV;      // maximum value in load vector
+    double MaxTS;       // maximum value in total stiffness matrix
+    double MaxLV;       // maximum value in load vector
 
     int TNN; // total number of nodes
     int NFIN;
@@ -346,6 +346,135 @@ public:
         return 0;
     }
 
+    bool feConjugateGradient(VarBandMatrix &A, double *b, double *x, int N)
+    {
+        if (b == NULL || x == NULL || N == 0)
+            return fePrintError(12);
+
+        double *r = NULL, *p = NULL, *z = NULL;
+        double gamma = 0, gamma_new = 0, gamma_new_sqrt = 0, alpha = 0, beta = 0;
+        int percent = 0, percent_new = 0;
+
+        if (ProgressBar)
+            cout << "\rSolving equation      [ 0%% ][                                                 ]";
+
+        r = (double *)malloc(N * sizeof(double));
+        memset(r, 0, sizeof(double));
+        p = (double *)malloc(N * sizeof(double));
+        memset(p, 0, sizeof(double));
+        z = (double *)malloc(N * sizeof(double));
+        memset(z, 0, sizeof(double));
+
+        // TODO: Max
+        // for (int i = 0; i < NSI; i++)
+        //     A[i] = A[i] / MaxTS;
+        // for (int i = 0; i < N; i++)
+        //     b[i] = b[i] / MaxLV;
+
+        // x = [0 ... 0]
+        // r = b - A * x
+        // p = r
+        // gamma = r' * r
+        gamma = 0.0;
+        for (int i = 0; i < N; ++i)
+        {
+            x[i] = 0.0;
+            r[i] = b[i];
+            p[i] = r[i];
+            gamma += r[i] * r[i];
+        }
+
+        for (int n = 0; 1; ++n)
+        {
+            // z = A * p
+            for (int i = 0; i < N; i++)
+            {
+                z[i] = 0.0;
+                for (int j = 0; j < N; j++)
+                    z[i] += A(i, j) * p[j];
+            }
+
+            // alpha = gamma / (p' * z)
+            alpha = 0.0;
+            for (int i = 0; i < N; ++i)
+                alpha += p[i] * z[i];
+            alpha = gamma / alpha;
+
+            // x = x + alpha * p
+            // r = r - alpha * z
+            // gamma_new = r' * r
+            gamma_new = 0.0;
+            for (int i = 0; i < N; ++i)
+            {
+                x[i] += alpha * p[i];
+                r[i] -= alpha * z[i];
+                gamma_new += r[i] * r[i];
+            }
+
+            gamma_new_sqrt = sqrt(gamma_new);
+            if (gamma_new_sqrt < EPS)
+                break;
+
+            if (ProgressBar)
+            {
+                percent_new = (int)((1 - log10(gamma_new_sqrt / EPS) / (-log10(EPS))) * 100);
+                if (percent_new > percent)
+                {
+                    percent = percent_new;
+                    cout << "\rSolving equation ";
+                    for (int i = 0; i <= 4; i++)
+                        if (i <= n % 4)
+                            cout << ".";
+                        else
+                            cout << " ";
+                    cout << "[ " << percent << "%% ]";
+                    cout << "[";
+                    for (int i = 0; i < 49; i++)
+                        if (i < percent / 2)
+                            cout << "=";
+                        else
+                            cout << " ";
+                    cout << "]";
+                }
+                else
+                {
+                    cout << "\rSolving equation ";
+                    for (int i = 0; i <= 4; i++)
+                        if (i <= n % 4)
+                            cout << ".";
+                        else
+                            cout << " ";
+                }
+            }
+
+            beta = gamma_new / gamma;
+
+            // p = r + (gamma_new / gamma) * p;
+            for (int i = 0; i < N; ++i)
+                p[i] = r[i] + beta * p[i];
+
+            // gamma = gamma_new
+            gamma = gamma_new;
+        }
+
+        // TODO: Max
+        // for (int i = 0; i < NSI; i++)
+        //     A[i] = A[i] * MaxTS;
+        // for (int i = 0; i < N; i++)
+        //     b[i] = b[i] * MaxLV;
+        for (int i = 0; i < N; i++)
+            x[i] = x[i] * MaxLV / MaxTS;
+
+        if (ProgressBar)
+            cout << "\rSolving equation done [ 100%% ][=================================================]\n";
+
+        free(r);
+        free(p);
+        free(z);
+
+        return 0;
+    }
+
     // solve equation of matrix by conjugate gradient parallel
     bool feConjugateGradientPar(VarBandMatrix &A, double *b, double *x, int N)
     {
@@ -443,7 +572,7 @@ public:
 
             if (ProgressBar)
             {
-                percent_new = (int)((1 - log10(gamma_new_sqrt * 1e15) / 16) * 100);
+                percent_new = (int)((1 - log10(gamma_new_sqrt / EPS) / (-log10(EPS))) * 100);
                 if (percent_new > percent)
                 {
                     percent = percent_new;
@@ -924,7 +1053,7 @@ bool FiniteElement::feCircularStructure(int m, int n)
     fout << "TNN," << m * n << ",\n";
     fout << "NFIN," << m << ",\n";
     fout << "NCST," << NCST << ",\n";
-    fout << "NOL,1,\n";
+    fout << "NOL," << m - 1 << ",\n";
 
     fout << "XCN,";
     for (int i = 0; i < n; i++)
@@ -983,12 +1112,35 @@ bool FiniteElement::feCircularStructure(int m, int n)
         fout << "1,";
     fout << "\n";
 
-    fout << "UNIT," << NCST << ",\n";
-    fout << "NODE1,3,\n";
-    fout << "NODE2,1,\n";
-    fout << "KOL,0,\n";
-    fout << "VOLX,0,\n";
-    fout << "VOLY,-1,\n";
+    fout << "UNIT,";
+    for (int j = 0; j < m - 1; j++)
+        fout << ((n - 2) * (m - 1) + j + 1) * 2 << ",";
+    fout << "\n";
+
+    fout << "NODE1,";
+    for (int i = 0; i < m - 1; i++)
+        fout << "2,";
+    fout << "\n";
+
+    fout << "NODE2,";
+    for (int i = 0; i < m - 1; i++)
+        fout << "3,";
+    fout << "\n";
+
+    fout << "KOL,";
+    for (int i = 0; i < m - 1; i++)
+        fout << "2,";
+    fout << "\n";
+
+    fout << "VOLX,";
+    for (int i = 0; i < m - 1; i++)
+        fout << "0,";
+    fout << "\n";
+
+    fout << "VOLY,";
+    for (int i = 0; i < m - 1; i++)
+        fout << "-1,";
+    fout << "\n";
 
     fout << "END,\n";
     return 0;
