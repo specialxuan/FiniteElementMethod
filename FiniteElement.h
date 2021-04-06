@@ -10,10 +10,12 @@ class FiniteElement
 {
 public:
     double EPS = 1e-15; // epsilon, calculation accuracy
-    double MaxTS;       // maximum value in total stiffness matrix
-    double MaxLV;       // maximum value in load vector
+    double MaxTS;      // maximum value in total stiffness matrix
+    double MaxLV;      // maximum value in load vector
 
-    int TNN;  // total number of nodes
+    int TNN; // total number of nodes
+    int NFIN;
+    int NFRN;
     int DOF;  // degree of freedom
     int NCST; // number of constant strain triangle unit
     int NOL;  // number of loads
@@ -61,7 +63,7 @@ public:
     {
         int *IV = new int[DOF](); // the location of diagonal element
         int it = 0;
-        int bandwidth1 = 0, bandwidth2 = 0, *perband = new int[TNN](); // bandwidth per line in total stiffness matrix
+        int bandwidth1 = 0, bandwidth2 = 0, bandwidth3 = 0, *perband = new int[TNN](); // bandwidth per line in total stiffness matrix
 
         for (int i = 0; i < NCST; i++)
         {
@@ -70,10 +72,13 @@ public:
             int n3 = CSTriangles[i].nodes[2] - 1;
             bandwidth1 = n3 - n1;
             bandwidth2 = n2 - n1;
-            if (bandwidth1 > perband[n3])
+            bandwidth3 = n3 - n2;
+            if (bandwidth1 > perband[n3] && n1 > NFIN - 1)
                 perband[n3] = bandwidth1;
-            if (bandwidth2 > perband[n2])
+            if (bandwidth2 > perband[n2] && n1 > NFIN - 1)
                 perband[n2] = bandwidth2;
+            if (bandwidth3 > perband[n3] && n2 > NFIN - 1)
+                perband[n2] = bandwidth3;
         }
 
         // for (int i = 0; i < TNN; i++)
@@ -81,7 +86,7 @@ public:
         //     cout << perband[i] << "\n";
         // }
 
-        for (int i = 0; i < TNN; i++)
+        for (int i = NFIN; i < TNN; i++)
             for (int j = 1; j <= 2; j++)
             {
                 it++;
@@ -216,16 +221,31 @@ public:
 
         for (int i = 0; i < NCST; i++)
         {
-            p[0] = 2 * (CSTriangles[i].nodes[0] - 1); // match the displacement with nods
-            p[1] = 2 * (CSTriangles[i].nodes[1] - 1);
-            p[2] = 2 * (CSTriangles[i].nodes[2] - 1);
+            p[0] = 2 * (CSTriangles[i].nodes[0] - NFIN - 1); // match the displacement with nods
+            p[1] = 2 * (CSTriangles[i].nodes[1] - NFIN - 1);
+            p[2] = 2 * (CSTriangles[i].nodes[2] - NFIN - 1);
 
-            double u1 = Displacement[p[0] + 0]; // displacements
-            double v1 = Displacement[p[0] + 1];
-            double u2 = Displacement[p[1] + 0];
-            double v2 = Displacement[p[1] + 1];
-            double u3 = Displacement[p[2] + 0];
-            double v3 = Displacement[p[2] + 1];
+            double u1, v1, u2, v2, u3, v3;
+
+            if (p[0] < 0)
+                u1 = 0, v1 = 0;
+            else
+                u1 = Displacement[p[0] + 0], v1 = Displacement[p[0] + 1];
+            if (p[1] < 0)
+                u2 = 0, v2 = 0;
+            else
+                u2 = Displacement[p[1] + 0], v2 = Displacement[p[1] + 1];
+            if (p[2] < 0)
+                u3 = 0, v3 = 0;
+            else
+                u3 = Displacement[p[2] + 0], v3 = Displacement[p[2] + 1];
+
+            // double u1 = Displacement[p[0] + 0]; // displacements
+            // double v1 = Displacement[p[0] + 1];
+            // double u2 = Displacement[p[1] + 0];
+            // double v2 = Displacement[p[1] + 1];
+            // double u3 = Displacement[p[2] + 0];
+            // double v3 = Displacement[p[2] + 1];
 
             double b1 = CSTriangles[i].b[0]; // paramaters of shape function
             double b2 = CSTriangles[i].b[1];
@@ -266,28 +286,31 @@ public:
 
         for (int k = 0; k < NCST; k++) // for every nodes
         {
-            p[0] = dofNode * (CSTriangles[k].nodes[0] - 1); // match the displacement with nods
-            p[1] = dofNode * (CSTriangles[k].nodes[1] - 1);
-            p[2] = dofNode * (CSTriangles[k].nodes[2] - 1);
+            p[0] = dofNode * (CSTriangles[k].nodes[0] - NFIN - 1); // match the displacement with nods
+            p[1] = dofNode * (CSTriangles[k].nodes[1] - NFIN - 1);
+            p[2] = dofNode * (CSTriangles[k].nodes[2] - NFIN - 1);
 
             for (int i = 0; i < numNode; i++) // for every nodes of the unit
             {
                 for (int j = i; j < numNode; j++) // for every nodes of the unit
                 {
-                    if (cstBuildUnitStiff(k, i, j, us)) // build unit stiffness matrix
-                        return fePrintError(8);
-                    for (int m = 0; m < dofNode; m++)
-                        for (int n = 0; n < dofNode; n++)
-                            TotalStiffness(p[i] + m, p[j] + n) += us[m * dofNode + n]; // superpose
+                    if (p[i] >= 0 && p[j] >= 0)
+                    {
+                        if (cstBuildUnitStiff(k, i, j, us)) // build unit stiffness matrix
+                            return fePrintError(8);
+                        for (int m = 0; m < dofNode; m++)
+                            for (int n = 0; n < dofNode; n++)
+                                TotalStiffness(p[i] + m, p[j] + n) += us[m * dofNode + n]; // superpose
+                    }
                 }
             }
         }
 
         MaxTS = TotalStiffness.normalize();
 
-        for (int i = 0; i < TNN; i++)
-            if (Nodes[i].fixed)
-                TotalStiffness(i * 2, i * 2) = TotalStiffness(i * 2 + 1, i * 2 + 1) = 1000000;
+        // for (int i = 0; i < TNN; i++)
+        //     if (Nodes[i].fixed)
+        //         TotalStiffness(i * 2, i * 2) = TotalStiffness(i * 2 + 1, i * 2 + 1) = 1;
 
         return 0;
     }
@@ -303,18 +326,19 @@ public:
             if (cstBuildUnitLoad(i, llv)) // build unit stiffness matrix
                 return fePrintError(9);
 
-            p[0] = dofNode * (CSTriangles[Loads[i].unit - 1].nodes[0] - 1); // match the displacement with nods
-            p[1] = dofNode * (CSTriangles[Loads[i].unit - 1].nodes[1] - 1);
-            p[2] = dofNode * (CSTriangles[Loads[i].unit - 1].nodes[2] - 1);
+            p[0] = dofNode * (CSTriangles[Loads[i].unit - 1].nodes[0] - NFIN - 1); // match the displacement with nods
+            p[1] = dofNode * (CSTriangles[Loads[i].unit - 1].nodes[1] - NFIN - 1);
+            p[2] = dofNode * (CSTriangles[Loads[i].unit - 1].nodes[2] - NFIN - 1);
 
-            for (int j = 0; j < 2; j++) // add local load vector to load vector
+            for (int j = 0; j < 3; j++) // add local load vector to load vector
                 for (int m = 0; m < dofNode; m++)
-                    LoadVector[p[j] + m] += llv[j * 2 + m];
+                    if (p[j] >= 0)
+                        LoadVector[p[j] + m] += llv[j * 2 + m];
         }
 
         for (int i = 0; i < DOF; i++)
-            if (LoadVector[i] > MaxLV)
-                MaxLV = LoadVector[i];
+            if (fabs(LoadVector[i]) > MaxLV)
+                MaxLV = fabs(LoadVector[i]);
 
         for (int i = 0; i < DOF; i++)
             LoadVector[i] = LoadVector[i] / MaxLV;
@@ -333,7 +357,7 @@ public:
         int percent = 0, percent_new = 0;
 
         if (ProgressBar)
-            cout << "\rSolving equation      [ 0%% ][                                                 ]";
+            cout << "\rSolving equation      [ 0% ][                                                 ]";
 
         r = (double *)malloc(N * sizeof(double));
         memset(r, 0, sizeof(double));
@@ -429,7 +453,7 @@ public:
                             cout << ".";
                         else
                             cout << " ";
-                    cout << "[ " << percent << "%% ]";
+                    cout << "[ " << percent << "% ]";
                     cout << "[";
                     for (int i = 0; i < 49; i++)
                         if (i < percent / 2)
@@ -468,7 +492,7 @@ public:
             x[i] = x[i] * MaxLV / MaxTS;
 
         if (ProgressBar)
-            cout << "\rSolving equation done [ 100%% ][=================================================]\n";
+            cout << "\rSolving equation done [ 100% ][=================================================]\n";
 
         free(r);
         free(p);
@@ -584,6 +608,7 @@ public:
     bool feInput(const char *);
     bool feOutput(const char *);
     bool feCalculate();
+    bool feCircularStructure(int, int);
 };
 
 FiniteElement::FiniteElement()
@@ -620,8 +645,9 @@ bool FiniteElement::feInput(const char *inputFile = "source&result/fe.csv")
     {
         char head[10];
         const int &cnt;
-    } rows[19] = {
+    } rows[20] = {
         {"TNN", one},
+        {"NFIN", one},
         {"NCST", one},
         {"NOL", one},
         {"XCN", TNN},
@@ -666,7 +692,7 @@ bool FiniteElement::feInput(const char *inputFile = "source&result/fe.csv")
     if (strcmp(rows[rowIndex - 2].head, buf))
         return fePrintError(rowIndex, 1);
     for (int i = 0; i < rows[rowIndex - 2].cnt; i++)
-        if (!(fin >> NCST))
+        if (!(fin >> NFIN))
             return fePrintError(rowIndex, i + 1);
     fin.ignore(1000000, '\n');
 
@@ -675,16 +701,26 @@ bool FiniteElement::feInput(const char *inputFile = "source&result/fe.csv")
     if (strcmp(rows[rowIndex - 2].head, buf))
         return fePrintError(rowIndex, 1);
     for (int i = 0; i < rows[rowIndex - 2].cnt; i++)
+        if (!(fin >> NCST))
+            return fePrintError(rowIndex, i + 1);
+    fin.ignore(1000000, '\n');
+
+    rowIndex = 5;
+    fin.getline(buf, 10, ',');
+    if (strcmp(rows[rowIndex - 2].head, buf))
+        return fePrintError(rowIndex, 1);
+    for (int i = 0; i < rows[rowIndex - 2].cnt; i++)
         if (!(fin >> NOL))
             return fePrintError(rowIndex, i + 1);
     fin.ignore(1000000, '\n');
 
-    DOF = 2 * TNN;
+    NFRN = TNN - NFIN;
+    DOF = 2 * NFRN;
     Nodes = new Node[TNN]();
     CSTriangles = new ConstantStrainTriangle[NCST]();
     Loads = new Load[NOL]();
 
-    for (rowIndex = 5; rowIndex <= 20; rowIndex++)
+    for (rowIndex = 6; rowIndex <= 21; rowIndex++)
     {
         fin.getline(buf, 10, ',');
         if (strcmp(rows[rowIndex - 2].head, buf))
@@ -693,67 +729,67 @@ bool FiniteElement::feInput(const char *inputFile = "source&result/fe.csv")
         {
             switch (rowIndex)
             {
-            case 5:
+            case 6:
                 if (!(fin >> Nodes[i].xcn))
                     return fePrintError(rowIndex, i + 1);
                 break;
-            case 6:
+            case 7:
                 if (!(fin >> Nodes[i].ycn))
                     return fePrintError(rowIndex, i + 1);
                 break;
-            case 7:
+            case 8:
                 if (!(fin >> Nodes[i].fixed))
                     return fePrintError(rowIndex, i + 1);
                 break;
-            case 8:
+            case 9:
                 if (!(fin >> CSTriangles[i].nodes[0]))
                     return fePrintError(rowIndex, i + 1);
                 break;
-            case 9:
+            case 10:
                 if (!(fin >> CSTriangles[i].nodes[1]))
                     return fePrintError(rowIndex, i + 1);
                 break;
-            case 10:
+            case 11:
                 if (!(fin >> CSTriangles[i].nodes[2]))
                     return fePrintError(rowIndex, i + 1);
                 break;
-            case 11:
+            case 12:
                 if (!(fin >> CSTriangles[i].elastic))
                     return fePrintError(rowIndex, i + 1);
                 break;
-            case 12:
+            case 13:
                 if (!(fin >> CSTriangles[i].mu))
                     return fePrintError(rowIndex, i + 1);
                 break;
-            case 13:
+            case 14:
                 if (!(fin >> CSTriangles[i].thick))
                     return fePrintError(rowIndex, i + 1);
                 break;
-            case 14:
+            case 15:
                 if (!(fin >> CSTriangles[i].rou))
                     return fePrintError(rowIndex, i + 1);
                 break;
-            case 15:
+            case 16:
                 if (!(fin >> Loads[i].unit))
                     return fePrintError(rowIndex, i + 1);
                 break;
-            case 16:
+            case 17:
                 if (!(fin >> Loads[i].node[0]))
                     return fePrintError(rowIndex, i + 1);
                 break;
-            case 17:
+            case 18:
                 if (!(fin >> Loads[i].node[1]))
                     return fePrintError(rowIndex, i + 1);
                 break;
-            case 18:
+            case 19:
                 if (!(fin >> Loads[i].kol))
                     return fePrintError(rowIndex, i + 1);
                 break;
-            case 19:
+            case 20:
                 if (!(fin >> Loads[i].vol[0]))
                     return fePrintError(rowIndex, i + 1);
                 break;
-            case 20:
+            case 21:
                 if (!(fin >> Loads[i].vol[1]))
                     return fePrintError(rowIndex, i + 1);
                 break;
@@ -823,23 +859,27 @@ bool FiniteElement::feOutput(const char *outputFile = "source&result/feResult.cs
         cout << "ERROR:\tCalculation is not completed!\n";
         return 0;
     }
-        
 
     ofstream fout(outputFile, ios::out);
     fout << setw(66) << "Calculation Of Finite Element Method,\n";
-    fout << "Unit   , Strain_X        , Strain_Y        , Stress_X        , Stress_Y        ,\n";
+    fout << "Unit   , EPSILON_X       , EPSILON_Y       , GAMMA_XY        , SIGMA_X         , SIGMA_Y         , TAU_XY          ,\n";
     for (int i = 0; i < NCST; i++)
-        fout << setw(6) << i + 1 << " , " \
-        << setw(15) << CSTriangles[i].strain[0] << " , " \
-        << setw(15) << CSTriangles[i].strain[1] << " , " \
-        << setw(15) << CSTriangles[i].stress[0] << " , " \
-        << setw(15) << CSTriangles[i].stress[0] << " ,\n";
+        fout << setw(6) << i + 1 << " , "
+             << setw(15) << CSTriangles[i].strain[0] << " , "
+             << setw(15) << CSTriangles[i].strain[1] << " , "
+             << setw(15) << CSTriangles[i].strain[2] << " , "
+             << setw(15) << CSTriangles[i].stress[0] << " , "
+             << setw(15) << CSTriangles[i].stress[1] << " , "
+             << setw(15) << CSTriangles[i].stress[2] << " ,\n";
 
     return 0;
 }
 
 bool FiniteElement::feCalculate()
 {
+    if (status == 0 || status == 3)
+        return fePrintError(0);
+
     if (cstInitialize())
         return fePrintError(1);
     else
@@ -869,8 +909,87 @@ bool FiniteElement::feCalculate()
         return fePrintError(6);
     else
         cout << "Calculating strain and stress succeed!\n";
-    
+
     status = 2;
 
+    return 0;
+}
+
+bool FiniteElement::feCircularStructure(int m, int n)
+{
+    int NCST = (m - 1) * (n - 1) * 2;
+    ofstream fout("source&result/fe_test.csv", ios::out);
+
+    fout << "INPUT, Degree of freedom is " << 2 * m * n << ",\n";
+    fout << "TNN," << m * n << ",\n";
+    fout << "NFIN," << m << ",\n";
+    fout << "NCST," << NCST << ",\n";
+    fout << "NOL,1,\n";
+
+    fout << "XCN,";
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < m; j++)
+            fout << i << ",";
+    fout << "\n";
+
+    fout << "YCN,";
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < m; j++)
+            fout << j << ",";
+    fout << "\n";
+
+    fout << "FIX,";
+    for (int i = 0; i < m; i++)
+        fout << "1,";
+    for (int i = m; i < m * n; i++)
+        fout << "0,";
+    fout << "\n";
+
+    fout << "NODE1,";
+    for (int i = 0; i < n - 1; i++)
+        for (int j = 0; j < m - 1; j++)
+            fout << i * m + j + 1 << "," << i * m + j + 1 << ",";
+    fout << "\n";
+
+    fout << "NODE2,";
+    for (int i = 0; i < n - 1; i++)
+        for (int j = 0; j < m - 1; j++)
+            fout << i * m + j + 1 + 1 << "," << i * m + j + 1 + m << ",";
+    fout << "\n";
+
+    fout << "NODE3,";
+    for (int i = 0; i < n - 1; i++)
+        for (int j = 0; j < m - 1; j++)
+            fout << i * m + j + 1 + m + 1 << "," << i * m + j + 1 + m + 1 << ",";
+    fout << "\n";
+
+    fout << "ELASTIC,";
+    for (int i = 0; i < NCST; i++)
+        fout << "1,";
+    fout << "\n";
+
+    fout << "MU,";
+    for (int i = 0; i < NCST; i++)
+        fout << 1.0 / 3 << ",";
+    fout << "\n";
+
+    fout << "THICK,";
+    for (int i = 0; i < NCST; i++)
+        fout << "1,";
+    fout << "\n";
+
+    fout << "ROU,";
+    for (int i = 0; i < NCST; i++)
+        fout << "1,";
+    fout << "\n";
+
+    fout << "UNIT," << NCST << ",\n";
+    fout << "NODE1,3,\n";
+    fout << "NODE2,1,\n";
+    fout << "KOL,0,\n";
+    fout << "VOLX,0,\n";
+    fout << "VOLY,-1,\n";
+
+    fout << "END,\n";
     return 0;
 }
