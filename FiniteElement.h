@@ -1,5 +1,6 @@
 #include "VarBandMatrix.h"
 #include <Windows.h>
+#include <algorithm>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -63,28 +64,40 @@ public:
     {
         int *IV = new int[DOF](); // the location of diagonal element
         int it = 0;
-        int bandwidth1 = 0, bandwidth2 = 0, bandwidth3 = 0, *perband = new int[TNN](); // bandwidth per line in total stiffness matrix
+        int bandwidth1 = 0, bandwidth2 = 0, bandwidth3 = 0;
+        int *perband = new int[TNN](); // bandwidth per line in total stiffness matrix
+        // int perband[20] = {0};
 
         for (int i = 0; i < NCST; i++)
         {
-            int n1 = CSTriangles[i].nodes[0] - 1;
-            int n2 = CSTriangles[i].nodes[1] - 1;
-            int n3 = CSTriangles[i].nodes[2] - 1;
-            bandwidth1 = n3 - n1;
-            bandwidth2 = n2 - n1;
-            bandwidth3 = n3 - n2;
-            if (bandwidth1 > perband[n3] && n1 > NFIN - 1)
-                perband[n3] = bandwidth1;
-            if (bandwidth2 > perband[n2] && n1 > NFIN - 1)
-                perband[n2] = bandwidth2;
-            if (bandwidth3 > perband[n3] && n2 > NFIN - 1)
-                perband[n2] = bandwidth3;
+            // int n1 = CSTriangles[i].nodes[0] - 1;
+            // int n2 = CSTriangles[i].nodes[1] - 1;
+            // int n3 = CSTriangles[i].nodes[2] - 1;
+            // bandwidth1 = n3 - n1;
+            // bandwidth2 = n2 - n1;
+            // bandwidth3 = n3 - n2;
+
+            int n[3] = {0};
+            n[0] = CSTriangles[i].nodes[0] - 1;
+            n[1] = CSTriangles[i].nodes[1] - 1;
+            n[2] = CSTriangles[i].nodes[2] - 1;
+
+            sort(n, n + 3);
+
+            bandwidth1 = n[2] - n[0];
+            bandwidth2 = n[1] - n[0];
+            bandwidth3 = n[2] - n[1];
+
+            if (bandwidth1 > perband[n[2]] && n[0] > NFIN - 1)
+                perband[n[2]] = bandwidth1;
+            if (bandwidth2 > perband[n[1]] && n[0] > NFIN - 1)
+                perband[n[1]] = bandwidth2;
+            if (bandwidth3 > perband[n[2]] && n[1] > NFIN - 1)
+                perband[n[2]] = bandwidth3;
         }
 
         // for (int i = 0; i < TNN; i++)
-        // {
         //     cout << perband[i] << "\n";
-        // }
 
         for (int i = NFIN; i < TNN; i++)
             for (int j = 1; j <= 2; j++)
@@ -131,6 +144,8 @@ public:
             double y2 = Nodes[CSTriangles[k].nodes[1] - 1].ycn;
             double y3 = Nodes[CSTriangles[k].nodes[2] - 1].ycn;
 
+            // cout << x1 << "," << y1 << " " << x2 << "," << y2 << " " << x3 << "," << y3 << "\n";
+
             a1 = x2 * y3 - x3 * y2; // paramaters of shape function
             a2 = x3 * y1 - x1 * y3;
             a3 = x1 * y2 - x2 * y1;
@@ -141,7 +156,13 @@ public:
             c2 = x1 - x3;
             c3 = x2 - x1;
 
+            // cout << a1 << " " << a2 << " " << a3 << "\n";
+            // cout << b1 << " " << b2 << " " << b3 << "\n";
+            // cout << c1 << " " << c2 << " " << c3 << "\n";
+
             CSTriangles[k].area = (a1 + a2 + a3) / 2; // area of the unit
+
+            // cout << CSTriangles[k].area << " " << CSTriangles[k].elastic << " " << CSTriangles[k].mu << " " << CSTriangles[k].thick << " " << CSTriangles[k].rou << "\n";
         }
 
         return 0;
@@ -298,6 +319,11 @@ public:
                     {
                         if (cstBuildUnitStiff(k, i, j, us)) // build unit stiffness matrix
                             return fePrintError(8);
+                        
+                        // for (int k = 0; k < 4; k++)
+                        //     cout << setw(10) << us[k] << " | ";
+                        // cout << "\n";
+
                         for (int m = 0; m < dofNode; m++)
                             for (int n = 0; n < dofNode; n++)
                                 TotalStiffness(p[i] + m, p[j] + n) += us[m * dofNode + n]; // superpose
@@ -1083,13 +1109,13 @@ bool FiniteElement::feCircularStructure(int m, int n)
     fout << "NODE2,";
     for (int i = 0; i < n - 1; i++)
         for (int j = 0; j < m - 1; j++)
-            fout << i * m + j + 1 + 1 << "," << i * m + j + 1 + m << ",";
+            fout << i * m + j + 1 + m + 1 << "," << i * m + j + 1 + m << ",";
     fout << "\n";
 
     fout << "NODE3,";
     for (int i = 0; i < n - 1; i++)
         for (int j = 0; j < m - 1; j++)
-            fout << i * m + j + 1 + m + 1 << "," << i * m + j + 1 + m + 1 << ",";
+            fout << i * m + j + 1 + 1 << "," << i * m + j + 1 + m + 1<< ",";
     fout << "\n";
 
     fout << "ELASTIC,";
