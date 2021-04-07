@@ -55,7 +55,7 @@ public:
     double *LoadVector;           // load vector
     double *Displacement;         // displacement of nodes
 
-    bool ProgressBar; // open progress bar
+    bool ProgressBar = 1; // open progress bar
     bool Parallel;    // open parallel
     int status;
 
@@ -183,7 +183,7 @@ public:
         double E = CSTriangles[k].elastic;
         double T = CSTriangles[k].thick;
 
-        double tmp = E * T / (4 * Area * (1 - Mu * Mu)); // temperatary coefficient
+        double tmp = E * T/ (4 * Area * (1 - Mu * Mu)); // temperatary coefficient
         // cout << tmp << "   tmp   \n";
         us[0 * 2 + 0] = (b[r] * b[s] + (1 - Mu) / 2 * c[r] * c[s]) * tmp; // unit stiffness matrix
         us[0 * 2 + 1] = (Mu * c[r] * b[s] + (1 - Mu) / 2 * b[r] * c[s]) * tmp;
@@ -202,10 +202,10 @@ public:
         int n2 = load.node[1] - 1;
         double A = CSTriangles[num].area;
         double t = CSTriangles[num].thick;
-        double x1 = Nodes[CSTriangles[num].nodes[n1]].xcn;
-        double x2 = Nodes[CSTriangles[num].nodes[n2]].xcn;
-        double y1 = Nodes[CSTriangles[num].nodes[n1]].ycn;
-        double y2 = Nodes[CSTriangles[num].nodes[n2]].ycn;
+        double x1 = Nodes[CSTriangles[num].nodes[n1] - 1].xcn;
+        double x2 = Nodes[CSTriangles[num].nodes[n2] - 1].xcn;
+        double y1 = Nodes[CSTriangles[num].nodes[n1] - 1].ycn;
+        double y2 = Nodes[CSTriangles[num].nodes[n2] - 1].ycn;
         double l = sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
 
         switch (load.kol)
@@ -246,7 +246,7 @@ public:
             p[1] = 2 * (CSTriangles[i].nodes[1] - NFIN - 1);
             p[2] = 2 * (CSTriangles[i].nodes[2] - NFIN - 1);
 
-            double u1, v1, u2, v2, u3, v3;
+            double u1 = 0, v1 = 0, u2 = 0, v2 = 0, u3 = 0, v3 = 0;
 
             if (p[0] < 0)
                 u1 = 0, v1 = 0;
@@ -285,14 +285,15 @@ public:
             // CSTriangles[i].strain[2] = u1 * c1 + u2 * c2 + u3 * c3 + v1 * b1 + v2 * b2 + v3 * b3 / area2;
 
             double *strain = CSTriangles[i].strain;
+            double *stress = CSTriangles[i].stress;
 
-            strain[0] = u1 * b1 + u2 * b2 + u3 * b3 / area2; // strain
-            strain[1] = v1 * c1 + v2 * c2 + v3 * c3 / area2;
-            strain[2] = u1 * c1 + u2 * c2 + u3 * c3 + v1 * b1 + v2 * b2 + v3 * b3 / area2;
+            strain[0] = (u1 * b1 + u2 * b2 + u3 * b3) / area2; // strain
+            strain[1] = (v1 * c1 + v2 * c2 + v3 * c3) / area2;
+            strain[2] = (u1 * c1 + u2 * c2 + u3 * c3 + v1 * b1 + v2 * b2 + v3 * b3) / area2;
 
-            CSTriangles[i].stress[0] = tmp * (strain[0] + mu * strain[1]); //stress
-            CSTriangles[i].stress[1] = tmp * (mu * strain[0] + strain[1]);
-            CSTriangles[i].stress[2] = tmp * (1 - mu) / 2 * strain[2];
+            stress[0] = tmp * (strain[0] + mu * strain[1]); //stress
+            stress[1] = tmp * (mu * strain[0] + strain[1]);
+            stress[2] = tmp * (1 - mu) / 2 * strain[2];
         }
 
         return 0;
@@ -332,7 +333,7 @@ public:
             }
         }
 
-        MaxTS = TotalStiffness.normalize();
+        // MaxTS = TotalStiffness.normalize();
 
         // for (int i = 0; i < TNN; i++)
         //     if (Nodes[i].fixed)
@@ -362,12 +363,12 @@ public:
                         LoadVector[p[j] + m] += llv[j * 2 + m];
         }
 
-        for (int i = 0; i < DOF; i++)
-            if (fabs(LoadVector[i]) > MaxLV)
-                MaxLV = fabs(LoadVector[i]);
+        // for (int i = 0; i < DOF; i++)
+        //     if (fabs(LoadVector[i]) > MaxLV)
+        //         MaxLV = fabs(LoadVector[i]);
 
-        for (int i = 0; i < DOF; i++)
-            LoadVector[i] = LoadVector[i] / MaxLV;
+        // for (int i = 0; i < DOF; i++)
+        //     LoadVector[i] = LoadVector[i] / MaxLV;
 
         return 0;
     }
@@ -643,8 +644,8 @@ public:
         //     A[i] = A[i] * MaxTS;
         // for (int i = 0; i < N; i++)
         //     b[i] = b[i] * MaxLV;
-        for (int i = 0; i < N; i++)
-            x[i] = x[i] * MaxLV / MaxTS;
+        // for (int i = 0; i < N; i++)
+        //     x[i] = x[i] * MaxLV / MaxTS;
 
         if (ProgressBar)
             cout << "\rSolving equation done [ 100% ][=================================================]\n";
@@ -1009,11 +1010,11 @@ bool FiniteElement::feInput(const char *inputFile = "source&result/fe.csv")
 
 bool FiniteElement::feOutput(const char *outputFile = "source&result/feResult.csv")
 {
-    if (status != 2)
-    {
-        cout << "ERROR:\tCalculation is not completed!\n";
-        return 0;
-    }
+    // if (status != 2)
+    // {
+    //     cout << "ERROR:\tCalculation is not completed!\n";
+    //     return 0;
+    // }
 
     ofstream fout(outputFile, ios::out);
     fout << setw(66) << "Calculation Of Finite Element Method,\n";
@@ -1081,16 +1082,18 @@ bool FiniteElement::feCircularStructure(int m, int n)
     fout << "NCST," << NCST << ",\n";
     fout << "NOL," << m - 1 << ",\n";
 
+    double delta_x = 10.0 / (n - 1), delta_y = 1.0 / (m - 1);
+
     fout << "XCN,";
     for (int i = 0; i < n; i++)
         for (int j = 0; j < m; j++)
-            fout << i << ",";
+            fout << i * delta_x << ",";
     fout << "\n";
 
     fout << "YCN,";
     for (int i = 0; i < n; i++)
         for (int j = 0; j < m; j++)
-            fout << j << ",";
+            fout << j * delta_y << ",";
     fout << "\n";
 
     fout << "FIX,";
@@ -1165,7 +1168,7 @@ bool FiniteElement::feCircularStructure(int m, int n)
 
     fout << "VOLY,";
     for (int i = 0; i < m - 1; i++)
-        fout << "-1,";
+        fout << "1,";
     fout << "\n";
 
     fout << "END,\n";

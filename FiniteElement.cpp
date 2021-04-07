@@ -8,7 +8,7 @@ int main()
     start = GetTickCount();
     double *us = new double[4]();
     FiniteElement fe;
-    fe.feCircularStructure(20, 40);
+    fe.feCircularStructure(31, 61);
     // fe.feInput();
     fe.feInput("source&result/fe_test.csv");
     // fe.feCalculate();
@@ -18,17 +18,20 @@ int main()
     // cout << (double)(end1 - start1) / CLOCKS_PER_SEC << endl;
     // end = GetTickCount();
     // cout << (double)(end - start) / 1000 << endl;
+    // fe.ProgressBar = 1;
+    // // fe.cstBuildUnitStiff(1, 0, 0, us);
+    // // cout << fe.Nodes[fe.CSTriangles[19].nodes[1]].ycn << "\n";
     fe.cstInitialize();
-    fe.cstBuildUnitStiff(1, 0, 0, us);
-    // fe.feAllocate();
-    // fe.feBuildTotalStiff();
-    // fe.feBuildLoadVector();
-    // fe.feConjugateGradientPar(fe.TotalStiffness, fe.LoadVector, fe.Displacement, fe.DOF);
-    // fe.cstStrainStress();
+    fe.feAllocate();
+    fe.feBuildTotalStiff();
+    fe.feBuildLoadVector();
+    fe.feConjugateGradientPar(fe.TotalStiffness, fe.LoadVector, fe.Displacement, fe.DOF);
+    fe.cstStrainStress();
+    fe.feOutput();
 
-    for (int k = 0; k < 4; k++)
-        cout << setw(10) << us[k] << " | ";
-    cout << "\n";
+    // for (int k = 0; k < 4; k++)
+    //     cout << setw(10) << us[k] << " | ";
+    // cout << "\n";
 
 
     // for (int i = 0; i < 2; i++)
@@ -40,15 +43,11 @@ int main()
     //         cout << fe.CSTriangles[i].stress[j] << "\n";
     
 
-    // for (int i = fe.NFIN * 2; i < fe.DOF; i++)
-    // {
+    // for (int i = 0; i < fe.DOF; i++)
     //     cout << fe.Displacement[i] << "\n";
-    // }
 
-    // for (int i = fe.NFIN * 2; i < fe.DOF; i++)
-    // {
-    //     cout << fe.LoadVector[i] << "\n";
-    // }
+    for (int i = fe.NFIN * 2; i < fe.DOF; i++)
+        cout << fe.LoadVector[i] << "\n";
     
 
     // for (int i = fe.NFIN * 2; i < fe.DOF; i++)
