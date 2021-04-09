@@ -56,7 +56,7 @@ public:
     double *Displacement;         // displacement of nodes
 
     bool ProgressBar = 1; // open progress bar
-    bool Parallel;    // open parallel
+    bool Parallel;        // open parallel
     int status;
 
     // allocate total stiffness matrix, load vector and displacement vector
@@ -183,7 +183,7 @@ public:
         double E = CSTriangles[k].elastic;
         double T = CSTriangles[k].thick;
 
-        double tmp = E * T/ (4 * Area * (1 - Mu * Mu)); // temperatary coefficient
+        double tmp = E * T / (4 * Area * (1 - Mu * Mu)); // temperatary coefficient
         // cout << tmp << "   tmp   \n";
         us[0 * 2 + 0] = (b[r] * b[s] + (1 - Mu) / 2 * c[r] * c[s]) * tmp; // unit stiffness matrix
         us[0 * 2 + 1] = (Mu * c[r] * b[s] + (1 - Mu) / 2 * b[r] * c[s]) * tmp;
@@ -320,7 +320,7 @@ public:
                     {
                         if (cstBuildUnitStiff(k, i, j, us)) // build unit stiffness matrix
                             return fePrintError(8);
-                        
+
                         // for (int k = 0; k < 4; k++)
                         //     cout << setw(10) << us[k] << " | ";
                         // cout << "\n";
@@ -1017,10 +1017,28 @@ bool FiniteElement::feOutput(const char *outputFile = "source&result/feResult.cs
     // }
 
     ofstream fout(outputFile, ios::out);
-    fout << setw(66) << "Calculation Of Finite Element Method,\n";
-    fout << "Unit   , EPSILON_X       , EPSILON_Y       , GAMMA_XY        , SIGMA_X         , SIGMA_Y         , TAU_XY          ,\n";
+    // fout << setw(66) << "Calculation Of Finite Element Method,\n";
+    fout << "Unit   ,"
+         << " x1              ,"
+         << " y1              ,"
+         << " x2              ,"
+         << " y2              ,"
+         << " x3              ,"
+         << " y3              ,"
+         << " EPSILON_X       ,"
+         << " EPSILON_Y       ,"
+         << " GAMMA_XY        ,"
+         << " SIGMA_X         ,"
+         << " SIGMA_Y         ,"
+         << " TAU_XY          ,\n";
     for (int i = 0; i < NCST; i++)
         fout << setw(6) << i + 1 << " , "
+             << setw(15) << Nodes[CSTriangles[i].nodes[0] - 1].xcn << " , "
+             << setw(15) << Nodes[CSTriangles[i].nodes[0] - 1].ycn << " , "
+             << setw(15) << Nodes[CSTriangles[i].nodes[1] - 1].xcn << " , "
+             << setw(15) << Nodes[CSTriangles[i].nodes[1] - 1].ycn << " , "
+             << setw(15) << Nodes[CSTriangles[i].nodes[2] - 1].xcn << " , "
+             << setw(15) << Nodes[CSTriangles[i].nodes[2] - 1].ycn << " , "
              << setw(15) << CSTriangles[i].strain[0] << " , "
              << setw(15) << CSTriangles[i].strain[1] << " , "
              << setw(15) << CSTriangles[i].strain[2] << " , "
@@ -1080,9 +1098,9 @@ bool FiniteElement::feCircularStructure(int m, int n)
     fout << "TNN," << m * n << ",\n";
     fout << "NFIN," << m << ",\n";
     fout << "NCST," << NCST << ",\n";
-    fout << "NOL," << m - 1 << ",\n";
+    fout << "NOL," << 1 << ",\n";
 
-    double delta_x = 10.0 / (n - 1), delta_y = 1.0 / (m - 1);
+    double delta_x = 10.0 / (n - 1), delta_y = 10.0 / (m - 1);
 
     fout << "XCN,";
     for (int i = 0; i < n; i++)
@@ -1118,7 +1136,7 @@ bool FiniteElement::feCircularStructure(int m, int n)
     fout << "NODE3,";
     for (int i = 0; i < n - 1; i++)
         for (int j = 0; j < m - 1; j++)
-            fout << i * m + j + 1 + 1 << "," << i * m + j + 1 + m + 1<< ",";
+            fout << i * m + j + 1 + 1 << "," << i * m + j + 1 + m + 1 << ",";
     fout << "\n";
 
     fout << "ELASTIC,";
@@ -1128,7 +1146,7 @@ bool FiniteElement::feCircularStructure(int m, int n)
 
     fout << "MU,";
     for (int i = 0; i < NCST; i++)
-        fout << 1.0 / 3 << ",";
+        fout << 0 << ",";
     fout << "\n";
 
     fout << "THICK,";
@@ -1142,33 +1160,34 @@ bool FiniteElement::feCircularStructure(int m, int n)
     fout << "\n";
 
     fout << "UNIT,";
-    for (int j = 0; j < m - 1; j++)
-        fout << ((n - 2) * (m - 1) + j + 1) * 2 << ",";
+    // for (int j = 0; j < m - 1; j++)
+    //     fout << ((n - 2) * (m - 1) + j + 1) * 2 << ",";
+    fout << NCST << ",";
     fout << "\n";
 
     fout << "NODE1,";
     for (int i = 0; i < m - 1; i++)
-        fout << "2,";
+        fout << "3,";
     fout << "\n";
 
     fout << "NODE2,";
     for (int i = 0; i < m - 1; i++)
-        fout << "3,";
+        fout << "1,";
     fout << "\n";
 
     fout << "KOL,";
     for (int i = 0; i < m - 1; i++)
-        fout << "2,";
+        fout << "0,";
     fout << "\n";
 
     fout << "VOLX,";
     for (int i = 0; i < m - 1; i++)
-        fout << "0,";
+        fout << "1,";
     fout << "\n";
 
     fout << "VOLY,";
     for (int i = 0; i < m - 1; i++)
-        fout << "1,";
+        fout << "0,";
     fout << "\n";
 
     fout << "END,\n";
