@@ -314,7 +314,23 @@ public:
 
             for (int i = 0; i < numNode; i++) // for every nodes of the unit
             {
-                for (int j = i; j < numNode; j++) // for every nodes of the unit
+                if (p[i] >= 0)
+                {
+                    if (cstBuildUnitStiff(k, i, i, us)) // build unit stiffness matrix
+                        return fePrintError(8);
+
+                    // for (int k = 0; k < 4; k++)
+                    //     cout << setw(10) << us[k] << " | ";
+                    // cout << "\n";
+
+                    for (int m = 0; m < dofNode; m++)
+                        for (int n = m; n < dofNode; n++)
+                        {
+                            TotalStiffness(p[i] + m, p[i] + n) += us[m * dofNode + n]; // superpose
+                            // cout << "A[" << p[i] + m << "," << p[i] + n << "] = " << TotalStiffness(p[i] + m, p[i] + n) << "\n";
+                        }
+                }
+                for (int j = i + 1; j < numNode; j++) // for every nodes of the unit
                 {
                     if (p[i] >= 0 && p[j] >= 0)
                     {
@@ -327,7 +343,10 @@ public:
 
                         for (int m = 0; m < dofNode; m++)
                             for (int n = 0; n < dofNode; n++)
+                            {
                                 TotalStiffness(p[i] + m, p[j] + n) += us[m * dofNode + n]; // superpose
+                                // cout << "A[" << p[i] + m << "," << p[j] + n << "] = " << TotalStiffness(p[i] + m, p[j] + n) << "\n";
+                            }
                     }
                 }
             }
@@ -1098,7 +1117,7 @@ bool FiniteElement::feCircularStructure(int m, int n)
     fout << "TNN," << m * n << ",\n";
     fout << "NFIN," << m << ",\n";
     fout << "NCST," << NCST << ",\n";
-    fout << "NOL," << 1 << ",\n";
+    fout << "NOL," << m - 1 << ",\n";
 
     double delta_x = 10.0 / (n - 1), delta_y = 10.0 / (m - 1);
 
@@ -1146,7 +1165,7 @@ bool FiniteElement::feCircularStructure(int m, int n)
 
     fout << "MU,";
     for (int i = 0; i < NCST; i++)
-        fout << 0 << ",";
+        fout << 0.333333 << ",";
     fout << "\n";
 
     fout << "THICK,";
@@ -1160,34 +1179,34 @@ bool FiniteElement::feCircularStructure(int m, int n)
     fout << "\n";
 
     fout << "UNIT,";
-    // for (int j = 0; j < m - 1; j++)
-    //     fout << ((n - 2) * (m - 1) + j + 1) * 2 << ",";
-    fout << NCST << ",";
+    for (int j = 0; j < m - 1; j++)
+        fout << ((n - 2) * (m - 1) + j + 1) * 2 << ",";
+    // fout << NCST << ",";
     fout << "\n";
 
     fout << "NODE1,";
     for (int i = 0; i < m - 1; i++)
-        fout << "3,";
+        fout << "2,";
     fout << "\n";
 
     fout << "NODE2,";
     for (int i = 0; i < m - 1; i++)
-        fout << "1,";
+        fout << "3,";
     fout << "\n";
 
     fout << "KOL,";
     for (int i = 0; i < m - 1; i++)
-        fout << "0,";
+        fout << "2,";
     fout << "\n";
 
     fout << "VOLX,";
     for (int i = 0; i < m - 1; i++)
-        fout << "1,";
+        fout << "0,";
     fout << "\n";
 
     fout << "VOLY,";
     for (int i = 0; i < m - 1; i++)
-        fout << "0,";
+        fout << "1,";
     fout << "\n";
 
     fout << "END,\n";
