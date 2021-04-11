@@ -1117,7 +1117,7 @@ bool FiniteElement::feCircularStructure(int m, int n)
     fout << "TNN," << m * n << ",\n";
     fout << "NFIN," << m << ",\n";
     fout << "NCST," << NCST << ",\n";
-    fout << "NOL," << m - 1 << ",\n";
+    fout << "NOL," << (m - 1) / 20 << ",\n";
 
     double delta_x = 10.0 / (n - 1), delta_y = 10.0 / (m - 1);
 
@@ -1179,34 +1179,39 @@ bool FiniteElement::feCircularStructure(int m, int n)
     fout << "\n";
 
     fout << "UNIT,";
-    for (int j = 0; j < m - 1; j++)
+    for (int j = 4 * (m - 1) / 20; j < 5 * (m - 1) / 20; j++)
         fout << ((n - 2) * (m - 1) + j + 1) * 2 << ",";
-    // fout << NCST << ",";
+    // fout << 3 * (n - 1) / 10 * (m - 1) * 2 + 1 << ",";
     fout << "\n";
 
     fout << "NODE1,";
     for (int i = 0; i < m - 1; i++)
         fout << "2,";
+    // fout << "2,";
     fout << "\n";
 
     fout << "NODE2,";
     for (int i = 0; i < m - 1; i++)
         fout << "3,";
+    // fout << "2,";
     fout << "\n";
 
     fout << "KOL,";
     for (int i = 0; i < m - 1; i++)
         fout << "2,";
+    // fout << "0,";
     fout << "\n";
 
     fout << "VOLX,";
     for (int i = 0; i < m - 1; i++)
-        fout << "0,";
+        fout << "-1,";
+    // fout << "-4,";
     fout << "\n";
 
     fout << "VOLY,";
     for (int i = 0; i < m - 1; i++)
-        fout << "1,";
+        fout << "0,";
+    // fout << "0,";
     fout << "\n";
 
     fout << "END,\n";
