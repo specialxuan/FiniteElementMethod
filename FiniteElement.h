@@ -10,7 +10,7 @@ using namespace std;
 class FiniteElement
 {
 public:
-    double EPS = 1e-15; // epsilon, calculation accuracy
+    double EPS = 1e-10; // epsilon, calculation accuracy
     double MaxTS;       // maximum value in total stiffness matrix
     double MaxLV;       // maximum value in load vector
 
@@ -411,7 +411,6 @@ public:
         z = (double *)malloc(N * sizeof(double));
         memset(z, 0, sizeof(double));
 
-        // TODO: Max
         // for (int i = 0; i < NSI; i++)
         //     A[i] = A[i] / MaxTS;
         // for (int i = 0; i < N; i++)
@@ -503,7 +502,6 @@ public:
             gamma = gamma_new;
         }
 
-        // TODO: Max
         // for (int i = 0; i < NSI; i++)
         //     A[i] = A[i] * MaxTS;
         // for (int i = 0; i < N; i++)
@@ -1204,7 +1202,7 @@ bool FiniteElement::feCircularStructure(int m, int n)
 
     fout << "VOLX,";
     for (int i = 0; i < m - 1; i++)
-        fout << "-1,";
+        fout << "1,";
     // fout << "-4,";
     fout << "\n";
 

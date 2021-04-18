@@ -13,7 +13,7 @@ int main()
     start = GetTickCount();
     double *us = new double[4]();
     FiniteElement fe;
-    fe.feCircularStructure(101, 101);
+    fe.feCircularStructure(201, 201);
     fe.feInput("source&result/fe_test.csv");
     fe.feCalculate();
     fe.feOutput();
