@@ -1202,7 +1202,7 @@ bool FiniteElement::feCircularStructure(int m, int n)
 
     fout << "VOLX,";
     for (int i = 0; i < m - 1; i++)
-        fout << "1,";
+        fout << "-1,";
     // fout << "-4,";
     fout << "\n";
 
