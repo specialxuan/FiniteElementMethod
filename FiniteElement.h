@@ -10,7 +10,7 @@ using namespace std;
 class FiniteElement
 {
 public:
-    double EPS = 1e-10; // epsilon, calculation accuracy
+    double EPS = 1e-8; // epsilon, calculation accuracy
     double MaxTS;       // maximum value in total stiffness matrix
     double MaxLV;       // maximum value in load vector
 
@@ -1177,7 +1177,7 @@ bool FiniteElement::feCircularStructure(int m, int n)
     fout << "\n";
 
     fout << "UNIT,";
-    for (int j = 4 * (m - 1) / 20; j < 5 * (m - 1) / 20; j++)
+    for (int j = 10 * (m - 1) / 20; j < 11 * (m - 1) / 20; j++)
         fout << ((n - 2) * (m - 1) + j + 1) * 2 << ",";
     // fout << 3 * (n - 1) / 10 * (m - 1) * 2 + 1 << ",";
     fout << "\n";

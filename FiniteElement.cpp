@@ -9,7 +9,7 @@ int main()
 {
     clock_t start1 = 0, end1 = 0;
     DWORD start, end;
-    start1 = clock();
+    start1 = clock();\
     start = GetTickCount();
     double *us = new double[4]();
     FiniteElement fe;
